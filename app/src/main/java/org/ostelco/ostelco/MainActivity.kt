@@ -10,15 +10,11 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.TextView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.iid.FirebaseInstanceId
-
-import com.google.firebase.database.FirebaseDatabase;
-
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import com.google.firebase.auth.AuthResult
-import com.google.android.gms.tasks.OnCompleteListener
 import org.json.JSONObject
 
 
@@ -41,7 +37,7 @@ class MainActivity : AppCompatActivity() {
                     .setAction("Action", null).show()
 
             mAuth!!.signInWithCustomToken(token)
-                    .addOnCompleteListener(this, OnCompleteListener<AuthResult> { task ->
+                    .addOnCompleteListener(this) { task ->
                         if (task.isSuccessful) {
                             // Sign in success, update UI with the signed-in user's information
                             Log.d(TAG, "signInWithCustomToken:success")
@@ -50,7 +46,7 @@ class MainActivity : AppCompatActivity() {
                             // If sign in fails, display a message to the user.
                             Log.w(TAG, "signInWithCustomToken:failure", task.exception)
                         }
-                    })
+                    }
         }
 
         class Auth : AsyncTask<Void, Void, String>() {
@@ -70,8 +66,8 @@ class MainActivity : AppCompatActivity() {
 
                 try {
                     val response = client.newCall(request).execute()
-                    val token = response!!.body().string()
-                    Log.d(TAG, "Response: " + token)
+                    val token = response?.body()?.string()
+                    Log.d(TAG, "Response: $token")
                     return token
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to download", e)
@@ -82,20 +78,20 @@ class MainActivity : AppCompatActivity() {
             public override fun onPostExecute(result: String) {
                 super.onPostExecute(result)
 
-                var claim = result.split(".")[1]
+                val claim = result.split(".")[1]
                 val jsonClaim = JSONObject(String(Base64.decode(claim, 0))).getJSONObject("claims")
                 Log.d(TAG, "claim: " + jsonClaim.toString())
                 msisdn = jsonClaim.get("msisdn").toString()
-                Log.d(TAG, "msisdn: " + msisdn)
+                Log.d(TAG, "msisdn: $msisdn")
 
-                val txt = findViewById(R.id.msisdn) as TextView
+                val txt = findViewById<TextView>(R.id.msisdn)
                 txt.text = msisdn
 
                 token = result
             }
         }
 
-        Auth().execute();
+        Auth().execute()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -114,14 +110,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun getToken() : String? {
+    private fun getToken() : String? {
         val fbToken = FirebaseInstanceId.getInstance().token
-        Log.d(TAG, "Firebase token: " + fbToken)
+        Log.d(TAG, "Firebase token: $fbToken")
         return fbToken
     }
 
-    fun storeFirebaseCloudMessageToken(token: String?, msisdn: String) {
-        val mDatabase = FirebaseDatabase.getInstance().getReference()
+    private fun storeFirebaseCloudMessageToken(token: String?, msisdn: String) {
+        val mDatabase = FirebaseDatabase.getInstance().reference
         mDatabase.child("firebaseCloudMessage").child(msisdn).setValue(token)
     }
 }
